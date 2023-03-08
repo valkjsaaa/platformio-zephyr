@@ -1954,6 +1954,14 @@ static uint8_t att_signed_write_cmd(struct bt_att_chan *chan, struct net_buf *bu
 	uint16_t handle;
 	int err;
 
+	/* The Signed Write Without Response sub-procedure shall only be supported
+	 * on the LE Fixed Channel Unenhanced ATT bearer.
+	 */
+	if (atomic_test_bit(chan->flags, ATT_ENHANCED)) {
+		/* No response for this command */
+		return 0;
+	}
+
 	req = (void *)buf->data;
 
 	handle = sys_le16_to_cpu(req->handle);
@@ -2433,7 +2441,8 @@ static int bt_att_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 
 	if (!handler) {
 		BT_WARN("Unhandled ATT code 0x%02x", hdr->code);
-		if (att_op_get_type(hdr->code) != ATT_COMMAND) {
+		if (att_op_get_type(hdr->code) != ATT_COMMAND &&
+		    att_op_get_type(hdr->code) != ATT_INDICATION) {
 			send_err_rsp(att_chan, hdr->code, 0,
 				     BT_ATT_ERR_NOT_SUPPORTED);
 		}
@@ -2574,7 +2583,8 @@ static void att_chan_detach(struct bt_att_chan *chan)
 
 static void att_timeout(struct k_work *work)
 {
-	struct bt_att_chan *chan = CONTAINER_OF(work, struct bt_att_chan,
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct bt_att_chan *chan = CONTAINER_OF(dwork, struct bt_att_chan,
 						timeout_work);
 
 	BT_ERR("ATT Timeout");

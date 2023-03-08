@@ -627,7 +627,7 @@ if(CONFIG_64BIT)
 endif()
 
 if(CONFIG_TIMEOUT_64BIT)
-  set(SYSCALL_SPLIT_TIMEOUT_ARG --split-type k_timeout_t)
+  set(SYSCALL_SPLIT_TIMEOUT_ARG --split-type k_timeout_t --split-type k_ticks_t)
 endif()
 
 add_custom_command(OUTPUT include/generated/syscall_dispatch.c ${syscall_list_h}
@@ -1044,7 +1044,7 @@ if(CONFIG_USERSPACE)
     OUTPUT ${APP_SMEM_UNALIGNED_LD} ${APP_SMEM_PINNED_UNALIGNED_LD}
     COMMAND ${PYTHON_EXECUTABLE}
     ${ZEPHYR_BASE}/scripts/gen_app_partitions.py
-    -d ${OBJ_FILE_DIR}
+    -f ${CMAKE_BINARY_DIR}/compile_commands.json
     -o ${APP_SMEM_UNALIGNED_LD}
     $<$<BOOL:${APP_SMEM_PINNED_UNALIGNED_LD}>:--pinoutput=${APP_SMEM_PINNED_UNALIGNED_LD}>
     ${APP_SMEM_PINNED_PARTITION_LIST_ARG}
@@ -1385,6 +1385,17 @@ if(CONFIG_OUTPUT_PRINT_MEMORY_USAGE)
   endif()
 endif()
 
+if(NOT CONFIG_EXCEPTIONS)
+  set(eh_frame_section ".eh_frame")
+else()
+  set(eh_frame_section "")
+endif()
+set(remove_sections_argument_list "")
+foreach(section .comment COMMON ${eh_frame_section})
+  list(APPEND remove_sections_argument_list
+    $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>${section})
+endforeach()
+
 if(CONFIG_BUILD_OUTPUT_HEX OR BOARD_FLASH_RUNNER STREQUAL openocd)
   get_property(elfconvert_formats TARGET bintools PROPERTY elfconvert_formats)
   if(ihex IN_LIST elfconvert_formats)
@@ -1394,9 +1405,7 @@ if(CONFIG_BUILD_OUTPUT_HEX OR BOARD_FLASH_RUNNER STREQUAL openocd)
               $<TARGET_PROPERTY:bintools,elfconvert_flag>
               ${GAP_FILL}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_outtarget>ihex
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>.comment
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>COMMON
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>.eh_frame
+              ${remove_sections_argument_list}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_infile>${KERNEL_ELF_NAME}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_outfile>${KERNEL_HEX_NAME}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_final>
@@ -1418,9 +1427,7 @@ if(CONFIG_BUILD_OUTPUT_BIN)
               $<TARGET_PROPERTY:bintools,elfconvert_flag>
               ${GAP_FILL}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_outtarget>binary
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>.comment
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>COMMON
-              $<TARGET_PROPERTY:bintools,elfconvert_flag_section_remove>.eh_frame
+              ${remove_sections_argument_list}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_infile>${KERNEL_ELF_NAME}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_outfile>${KERNEL_BIN_NAME}
               $<TARGET_PROPERTY:bintools,elfconvert_flag_final>
