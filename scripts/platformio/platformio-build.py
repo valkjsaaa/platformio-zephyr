@@ -152,7 +152,7 @@ def is_proper_zephyr_project():
 
 def create_default_project_files():
     cmake_tpl = """cmake_minimum_required(VERSION 3.13.1)
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(%s)
 
 FILE(GLOB app_sources ../src/*.c*)
@@ -390,7 +390,7 @@ def generate_kobject_files():
 
     cmd = (
         "$PYTHONEXE",
-        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "gen_kobject_list.py"),
+        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "build", "gen_kobject_list.py"),
         "--kobj-types-output",
         os.path.join(
             "$BUILD_DIR", "zephyr", "include", "generated", "kobj-types-enum.h"
@@ -417,7 +417,7 @@ def validate_driver():
 
     cmd = (
         "$PYTHONEXE",
-        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "gen_kobject_list.py"),
+        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "build", "gen_kobject_list.py"),
         "--validation-output",
         driver_header,
         "--include",
@@ -460,7 +460,7 @@ def parse_syscalls():
     if not all(os.path.isfile(env.subst(f)) for f in (syscalls_config, struct_tags)):
         cmd = [
             "$PYTHONEXE",
-            '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "parse_syscalls.py"),
+            '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "build", "parse_syscalls.py"),
             "--include",
             '"%s"' % os.path.join(FRAMEWORK_DIR, "include"),
             "--include",
@@ -495,7 +495,7 @@ def generate_syscall_files(syscalls_json, project_settings):
 
     cmd = [
         "$PYTHONEXE",
-        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "gen_syscalls.py"),
+        '"%s"' % os.path.join(FRAMEWORK_DIR, "scripts", "build", "gen_syscalls.py"),
         "--json-file",
         syscalls_json,
         "--base-output",
@@ -1230,7 +1230,7 @@ if not codemodel:
 target_configs = load_target_configurations(codemodel)
 
 app_config = target_configs.get("app")
-prebuilt_config = target_configs.get("zephyr_prebuilt")
+prebuilt_config = target_configs.get("zephyr_pre1")
 
 if not app_config or not prebuilt_config:
     sys.stderr.write("Error: Couldn't find main Zephyr target in the code model\n")
